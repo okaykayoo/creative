@@ -67,9 +67,7 @@
     }
     .order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .order-id { font-weight: 700; font-size: 14px; }
-    .status-badge {
-      padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600;
-    }
+    .status-badge { padding: 3px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
     .status-pending { background: #ff9800; color: #fff; }
     .status-transit { background: #2196f3; color: #fff; }
     .status-delivered { background: #4caf50; color: #fff; }
@@ -110,7 +108,7 @@
 
   <div class="content">
 
-    <!-- ============ TAB 1: AI CHAT ============ -->
+    <!-- TAB 1: AI CHAT -->
     <div id="chat" class="tab-panel active">
       <div id="chatMessages">
         <div class="msg bot">👋 Hello! I can help in ខ្មែរ, English, or 中文. How can I assist you today?</div>
@@ -121,7 +119,7 @@
       </div>
     </div>
 
-    <!-- ============ TAB 2: DELIVERY ============ -->
+    <!-- TAB 2: DELIVERY -->
     <div id="delivery" class="tab-panel">
       <div class="section">
         <button class="add-btn" onclick="addOrder()">+ New Delivery Order</button>
@@ -132,12 +130,8 @@
   </div>
 
   <nav class="bottom-nav">
-    <div class="nav-item active" data-tab="chat">
-      <span class="icon">💬</span>Chat
-    </div>
-    <div class="nav-item" data-tab="delivery">
-      <span class="icon">🚚</span>Delivery
-    </div>
+    <div class="nav-item active" data-tab="chat"><span class="icon">💬</span>Chat</div>
+    <div class="nav-item" data-tab="delivery"><span class="icon">🚚</span>Delivery</div>
   </nav>
 
   <script>
@@ -151,7 +145,7 @@
       }
     }
 
-    // ============ NAV ============
+    // NAV
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', () => {
         document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -163,13 +157,15 @@
     });
 
     // ============ AI CHAT ============
-    const GEMINI_API_KEY = 'PASTE_YOUR_GEMINI_API_KEY_HERE';
+    // ⚠️ REPLACE THIS with your NEW key (the one you created after deleting the exposed one)
+    const GEMINI_API_KEY = 'AQ.Ab8RN6Iqf1e2jNuVw3ayi3atZUOeYhxwhGSZXb2Nj_wiHnV1VQ';
+
     const chatMessages = document.getElementById('chatMessages');
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendBtn');
 
     let conversationHistory = [
-      { role: 'user', parts: [{ text: 'You are Salina, a helpful customer service assistant for a business in Cambodia. You MUST auto-detect the customer language and ALWAYS reply in the SAME language they used. Supported languages: Khmer, English, Chinese. Be concise, friendly, and helpful. If you don\'t know something, offer to connect them to a human.' }] },
+      { role: 'user', parts: [{ text: 'You are Salina, a helpful customer service assistant for a business in Cambodia. You MUST auto-detect the customer language and ALWAYS reply in the SAME language they used. Supported languages: Khmer, English, Chinese. Be concise, friendly, and helpful. If you do not know something, offer to connect them to a human.' }] },
       { role: 'model', parts: [{ text: 'Understood. I will respond in the customer\'s language (Khmer, English, or Chinese) and assist them helpfully.' }] }
     ];
 
@@ -181,28 +177,38 @@
       conversationHistory.push({ role: 'user', parts: [{ text }] });
 
       const typingEl = addMessage('...', 'bot typing');
-      scrollChat();
 
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'x-goog-api-key': GEMINI_API_KEY
+            },
             body: JSON.stringify({ contents: conversationHistory })
           }
         );
         const data = await res.json();
+
+        if (!res.ok) {
+          typingEl.remove();
+          const errMsg = data?.error?.message || `HTTP ${res.status}`;
+          addMessage('⚠️ ' + errMsg, 'bot');
+          console.error('Gemini error:', data);
+          return;
+        }
+
         typingEl.remove();
-        const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || '⚠️ No response. Please try again.';
+        const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || '⚠️ No response from AI.';
         conversationHistory.push({ role: 'model', parts: [{ text: reply }] });
         addMessage(reply, 'bot');
       } catch (e) {
         typingEl.remove();
-        addMessage('⚠️ Error connecting to AI. Check your API key.', 'bot');
+        addMessage('⚠️ Network error. Check your connection.', 'bot');
         console.error(e);
       }
-      scrollChat();
     }
 
     function addMessage(text, type) {
@@ -210,11 +216,10 @@
       el.className = 'msg ' + type;
       el.textContent = text;
       chatMessages.appendChild(el);
-      scrollChat();
+      chatMessages.scrollTop = chatMessages.scrollHeight;
       if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
       return el;
     }
-    function scrollChat() { chatMessages.scrollTop = chatMessages.scrollHeight; }
 
     sendBtn.addEventListener('click', sendMessage);
     chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
@@ -231,9 +236,7 @@
       ];
     }
 
-    function saveOrders(orders) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
-    }
+    function saveOrders(orders) { localStorage.setItem(STORAGE_KEY, JSON.stringify(orders)); }
 
     function renderOrders() {
       const orders = loadOrders();
